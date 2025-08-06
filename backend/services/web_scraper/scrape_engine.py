@@ -11,7 +11,8 @@ class ScrapeEngine():
             base_url="http://localhost:11434/v1",
             api_key="ollama"
         )
-        self.model = 'llama3.2:3b'
+        # self.model = 'llama3.2:3b'
+        self.model = 'hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-1M-GGUF:Q4_K_M'
         self.message_catolog = {}
         self.system_prompt = "You are an expert."
 
@@ -21,6 +22,11 @@ class ScrapeEngine():
         self.generated_code = None
 
     def _fetch_html(self) -> bool:
+        """
+        Private method to fetch HTML content from URL.
+        HTML content to be used for context on how to build scraper for specific site.
+        Returns boolean value for success / failure.
+        """
         try:
             response = requests.get(self.url)
             response.raise_for_status()
@@ -38,13 +44,13 @@ class ScrapeEngine():
         
         prompt = f"""
         Based on the following HTML content, write a single Python function named
-        `parse_data(html_text)` that uses the BeautifulSoup library to extract specific data.
+        `parse_data()` that uses the BeautifulSoup library to extract specific data.
 
         The function should:
-        1. Take one argument: `html_text` (a string containing the HTML).
+        1. Use this url to get the html content from: {self.url}.
         2. Parse the HTML using BeautifulSoup.
         3. Find and extract the data as described: "{data_description}".
-        4. Return the data as a list of dictionaries.
+        4. Return the data as a pandas dataframe.
         5. The function should be self-contained and not rely on any external variables.
         6. Only return the Python code for the function, nothing else.
 
@@ -77,7 +83,7 @@ class ScrapeEngine():
             
         try:
             local_scope = {}
-
+            
             exec(self.generated_code, globals(), local_scope)
 
             parser_func = local_scope['parse_data']
@@ -87,3 +93,7 @@ class ScrapeEngine():
         
         except Exception as e:
             return None
+        
+    def onboard_scraper(self) -> bool:
+
+        return False
