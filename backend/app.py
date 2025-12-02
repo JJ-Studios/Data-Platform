@@ -6,17 +6,24 @@ import logging
 import sqlite3
 import aiosqlite
 from pydantic import BaseModel
+from typing import Optional, List, Any
 
 from decouple import config
 
 from openai import OpenAI
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, APIRouter
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from scrapegraphai.graphs import SmartScraperGraph
+
+from settings.database import ClickHouseDB
+from services.job_manager import JobManager, JobStatus
+
+from api.v1.chatbot import chatbot_router as chatbot_router_v1
+from api.v1.web_scraper import web_scraper_router as web_scraper_router_v1
 
 logging.basicConfig(
     level=logging.INFO, 
@@ -26,6 +33,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+router = APIRouter()
 
 app.add_middleware(
   CORSMiddleware,
@@ -47,13 +55,15 @@ client = OpenAI(
 graph_config = {
     "llm": {
         "model": OPENAI_MODEL,
-        "model_tokens": 8192,
+        "base_url": OPENAI_BASE_URL,
+        # "model_tokens": 8192,
+        "api_key": OPENAI_API_KEY,
         # "temperature": 0.1,
         # "format": "json",
     },
-    "embedder_model": {
-        "model": "nomic-embed-text:latest"
-    },
+    # "embedder_model": {
+    #     "model": "nomic-embed-text:latest"
+    # },
     "verbose": True,
     "headless": False,
 }
@@ -77,14 +87,46 @@ class SaveResultsRequest(BaseModel):
     data: list
     columns: dict  # Mapping of original column names to new column names
 
+#####################
+#                   #
+# New               #
+#                   #
+#####################
+
+db = ClickHouseDB()
+job_manager = JobManager()
+
+def get_db():
+    return db
+
+def get_job_manager():
+    return job_manager
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
 
 @app.get("/")
-async def health_check():
-    return {"status": "healthy"}
+async def root():
+    return {
+        "message": "AI Web Scraping Agent API",
+        "version": "1.0.0",
+        "docs": "/docs"
+        }
 
+# async def process_scrape_job(
+#         job_id: str,
+#         url: str,
+#         instructions: Optional[str],
+#         auto_approve: bool,
+#         jm: JobManager,
+#         database: ClickHouseDB
+# ):
+#     """Background task to process scraping job"""
+#     try:
+#         jm.update_job(job_id, status=JobStatus.PROCESSING)
+
+#         extracted = await extract_data(url, instructions)
 
 @app.get("/v1/models")
 def models():
@@ -236,6 +278,19 @@ def save_results(request: SaveResultsRequest):
         if conn:
             conn.close()
 
+###############
+#             #
+# New Gen     #
+#             #
+###############
+
+app.include_router(router)
+
+#####  v1  #####
+app.include_router(chatbot_router_v1, prefix="/v1")
+app.include_router(chatbot_router_v1, prefix="/latest")
+app.include_router(web_scraper_router_v1, prefix="/v1")
+app.include_router(web_scraper_router_v1, prefix="/latest")
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
