@@ -1,4 +1,8 @@
-from typing import AsyncGenerator, Dict, Any
+import logfire
+import json
+import os
+
+from typing import AsyncGenerator, Dict, Any, List, Optional
 from pydantic_ai import (
     Agent,
     ModelMessage,
@@ -18,14 +22,27 @@ from pydantic_ai import (
     ThinkingPartDelta,
     ToolCallPartDelta,
 )
+from pydantic_ai.mcp import MCPServerStreamableHTTP
+from pydantic_ai.models.openai import OpenAIChatModel
+
 from dotenv import load_dotenv
 from datetime import datetime, timezone
 
-import json
 
 load_dotenv()
 
-agent = Agent('ollama:llama3.2:3b')
+logfire.configure()
+logfire.instrument_pydantic_ai()
+
+provider = os.getenv("LLM_PROVIDER")
+model = os.getenv("MODEL")
+
+server = MCPServerStreamableHTTP('http://localhost:8001/mcp')
+
+agent = Agent(
+    model=f'{provider}:{model}',
+    toolsets=[server]
+    )
 
 class ChatInteraction():
     def __init__(self):
@@ -37,6 +54,30 @@ class ChatInteraction():
                 self.message_history[user_id] = []
             return False
         return True
+    
+    def convert_openai_messages(self, messages: List[Dict[str, str]]) -> List[Any]:
+        """
+        Converts OpenAI format [{"role": "user", "content": "..."}] 
+        to PydanticAI format [ModelRequest(...), ModelResponse(...)]
+        """
+        pydantic_messages = []
+        
+        for msg in messages:
+            role = msg.get("role")
+            content = msg.get("content", "")
+            
+            if role == "user":
+                pydantic_messages.append(
+                    ModelRequest(parts=[UserPromptPart(content=content)])
+                )
+            elif role == "assistant":
+                pydantic_messages.append(
+                    ModelResponse(parts=[TextPart(content=content)])
+                )
+            # Note: System messages are typically handled by the Agent config, 
+            # but simple text history conversion suffices for most chat contexts.
+            
+        return pydantic_messages
 
     async def send_message(self, user_id: str, message: str):
         self.user_check(user_id=user_id, create_user=True)
@@ -126,12 +167,25 @@ class ChatInteraction():
                         
                         # Stream the final text output
                         if final_result_found:
+                            previous_text = ""
                             async for output in request_stream.stream_text():
-                                yield {
-                                    "type": "text",
-                                    "content": output,
-                                    "metadata": {}
-                                }
+                                # Only yield the new portion (delta)
+                                if output.startswith(previous_text):
+                                    delta = output[len(previous_text):]
+                                    if delta:
+                                        yield {
+                                            "type": "text",
+                                            "content": delta,
+                                            "metadata": {}
+                                        }
+                                    previous_text = output
+                                else:
+                                    # Fallback: yield full output if not cumulative
+                                    yield {
+                                        "type": "text",
+                                        "content": output,
+                                        "metadata": {}
+                                    }
                 
                 elif Agent.is_call_tools_node(node):
                     if include_events:
@@ -200,8 +254,17 @@ class ChatInteraction():
                                 break
                         
                         if final_result_found:
+                            previous_text = ""
                             async for output in request_stream.stream_text():
-                                yield output
+                                # Only yield the new portion (delta)
+                                if output.startswith(previous_text):
+                                    delta = output[len(previous_text):]
+                                    if delta:
+                                        yield delta
+                                    previous_text = output
+                                else:
+                                    # Fallback: yield full output if not cumulative
+                                    yield output
                 
                 elif Agent.is_end_node(node):
                     if run.result:

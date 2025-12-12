@@ -5,12 +5,17 @@ import { usePathname } from "next/navigation";
 
 export default function Navbar() {
   const pathname = usePathname();
-  
+
   const navItems = [
     { name: "Home", href: "/" },
     { name: "Dashboard", href: "/dashboard" },
-    { name: "AI Chat", href: "/chat" },
-    { name: "Database", href: "/database" },
+    { name: "Ingest", href: "/ingest" }, // Replaces "Scraper" (Future home of Web Scraper, File Uploads)
+    { name: "Catalog", href: "/catalog" }, // Replaces "Database" (Data Catalog & Browser)
+    { name: "Pipelines", href: "/pipelines" }, // Orchestration & Jobs
+    { name: "Lab", href: "/lab" }, // SQL Editor & Transformations
+    { name: "AI Chat", href: "/chat" }, // Your AI Assistant
+    { name: "AI Analytics", href: "/analytics" },
+    { name: "Settings", href: "/settings" }, // API Keys & Config
   ];
 
   return (

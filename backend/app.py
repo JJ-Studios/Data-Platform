@@ -24,6 +24,9 @@ from services.job_manager import JobManager, JobStatus
 
 from api.v1.chatbot import chatbot_router as chatbot_router_v1
 from api.v1.web_scraper import web_scraper_router as web_scraper_router_v1
+from api.v1.data_catalog import catalog_service_router as catalog_service_router_v1
+from api.v1.query_router import query_service_router as query_service_router_v1
+from services.vanna_chat.vanna_service import vanna_app
 
 logging.basicConfig(
     level=logging.INFO, 
@@ -42,6 +45,8 @@ app.add_middleware(
   allow_methods=["*"],
   allow_headers=["*"],
 )
+
+# app.mount("/", vanna_app)
 
 OPENAI_BASE_URL = config("OPENAI_BASE_URL", default="http://localhost:11434/v1", cast=str)
 OPENAI_API_KEY = config("OPENAI_API_KEY", default="ollama", cast=str)
@@ -291,6 +296,12 @@ app.include_router(chatbot_router_v1, prefix="/v1")
 app.include_router(chatbot_router_v1, prefix="/latest")
 app.include_router(web_scraper_router_v1, prefix="/v1")
 app.include_router(web_scraper_router_v1, prefix="/latest")
+app.include_router(catalog_service_router_v1, prefix="/v1")
+app.include_router(catalog_service_router_v1, prefix="/latest")
+app.include_router(query_service_router_v1, prefix="/v1")
+app.include_router(query_service_router_v1, prefix="/latest")
+app.include_router(vanna_app.router)
+
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
