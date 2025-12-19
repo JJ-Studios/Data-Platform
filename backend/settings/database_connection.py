@@ -1,22 +1,23 @@
 import clickhouse_connect
 
 class ClickhouseConnection(object):
-    def __init__(self):
-        self._host = ""
-        self._port = ""
-        self._username = ""
-        self._password = ""
-        self._database = ""
-        self._verify = False
+    def __init__(
+            self,
+            host: str = "localhost",
+            port: int = 18123,
+            # database: str = "scraped_data",
+            username: str = "default",
+            password: str = "password",
+            verify: bool = False):
 
         try:
             self._client = clickhouse_connect.get_client(
-                host=self._host,
-                port=self._port,
-                username=self._username,
-                password=self._password,
-                databse=self._database,
-                verify=False
+                host=host,
+                port=port,
+                username=username,
+                password=password,
+                # database=database,
+                verify=verify
             )
         except Exception as e:
             raise e

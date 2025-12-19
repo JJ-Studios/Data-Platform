@@ -26,6 +26,7 @@ from api.v1.chatbot import chatbot_router as chatbot_router_v1
 from api.v1.web_scraper import web_scraper_router as web_scraper_router_v1
 from api.v1.data_catalog import catalog_service_router as catalog_service_router_v1
 from api.v1.query_router import query_service_router as query_service_router_v1
+from api.v1.openai_routes import openai_router as openai_router_v1
 from services.vanna_chat.vanna_service import vanna_app
 
 logging.basicConfig(
@@ -300,6 +301,9 @@ app.include_router(catalog_service_router_v1, prefix="/v1")
 app.include_router(catalog_service_router_v1, prefix="/latest")
 app.include_router(query_service_router_v1, prefix="/v1")
 app.include_router(query_service_router_v1, prefix="/latest")
+app.include_router(openai_router_v1, prefix="/v1")
+app.include_router(openai_router_v1, prefix="/latest")
+
 app.include_router(vanna_app.router)
 
 

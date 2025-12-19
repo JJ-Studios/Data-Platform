@@ -10,10 +10,10 @@ class ClickHouseDB:
     def __init__(
             self,
             host: str = "localhost",
-            port: int = 8123,
+            port: int = 18123,
             database: str = "scraped_data",
             username: str = "default",
-            password: str = ""
+            password: str = "password"
     ):
         self.client = clickhouse_connect.get_client(
             host=host,
@@ -26,7 +26,7 @@ class ClickHouseDB:
 
     def _ensure_database(self):
         """Create database and table if they don't exist"""
-        self.client.command(f"CREATE DATABSE IF NOT EXISTS {self.database}")
+        self.client.command(f"CREATE DATABASE IF NOT EXISTS {self.database}")
         self.client.command(f"""
                 CREATE TABLE IF NOT EXISTS {self.database}.scraped_content (
                 id String,

@@ -79,10 +79,26 @@ class ChatInteraction():
             
         return pydantic_messages
 
-    async def send_message(self, user_id: str, message: str):
-        self.user_check(user_id=user_id, create_user=True)
-        response = await agent.run(user_prompt=message, message_history=self.message_history[user_id])
-        self.message_history[user_id] = response.all_messages()
+    async def send_message(
+        self, 
+        user_id: str, 
+        message: str, 
+        history: Optional[List[Any]] = None
+    ):
+        # Determine which history to use
+        if history is not None:
+            # Stateless mode: use provided history (from OpenAI router)
+            message_history = history
+        else:
+            # Stateful mode: load from internal memory
+            self.user_check(user_id=user_id, create_user=True)
+            message_history = self.message_history[user_id]
+
+        response = await agent.run(user_prompt=message, message_history=message_history)
+        
+        # Only save state if we are in stateful mode
+        if history is None:
+            self.message_history[user_id] = response.all_messages()
         
         return response.output
     
@@ -90,7 +106,8 @@ class ChatInteraction():
         self, 
         user_id: str, 
         message: str,
-        include_events: bool = True
+        include_events: bool = True,
+        history: Optional[List[Any]] = None
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """
         Stream message responses with detailed event information.
@@ -106,11 +123,15 @@ class ChatInteraction():
             - content: Event content
             - metadata: Additional event data
         """
-        self.user_check(user_id=user_id, create_user=True)
+        if history is not None:
+            message_history = history
+        else:
+            self.user_check(user_id=user_id, create_user=True)
+            message_history = self.message_history[user_id]
         
         async with agent.iter(
             user_prompt=message,
-            message_history=self.message_history[user_id]
+            message_history=message_history
         ) as run:
             async for node in run:
                 if Agent.is_user_prompt_node(node):
@@ -169,7 +190,6 @@ class ChatInteraction():
                         if final_result_found:
                             previous_text = ""
                             async for output in request_stream.stream_text():
-                                # Only yield the new portion (delta)
                                 if output.startswith(previous_text):
                                     delta = output[len(previous_text):]
                                     if delta:
@@ -180,7 +200,6 @@ class ChatInteraction():
                                         }
                                     previous_text = output
                                 else:
-                                    # Fallback: yield full output if not cumulative
                                     yield {
                                         "type": "text",
                                         "content": output,
@@ -209,9 +228,10 @@ class ChatInteraction():
                                     }
                 
                 elif Agent.is_end_node(node):
-                    # Update message history with the completed run
+                    # Update message history only if running in stateful mode
                     if run.result:
-                        self.message_history[user_id] = run.result.all_messages()
+                        if history is None:
+                            self.message_history[user_id] = run.result.all_messages()
                         
                         yield {
                             "type": "final",
