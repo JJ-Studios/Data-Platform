@@ -28,6 +28,8 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from dotenv import load_dotenv
 from datetime import datetime, timezone
 
+from settings.mcp_servers import run_python_server, ch_mcp_server, brave_search_server
+from services.web_scraper.crawl4ai_tools import web_scraping_toolset
 
 load_dotenv()
 
@@ -37,11 +39,18 @@ logfire.instrument_pydantic_ai()
 provider = os.getenv("LLM_PROVIDER")
 model = os.getenv("MODEL")
 
-server = MCPServerStreamableHTTP('http://localhost:8001/mcp')
+# ch_mcp_server = MCPServerStreamableHTTP('http://localhost:8001/mcp')
+# run_python_server = MCPServerStreamableHTTP('http://localhost:8002/mcp')
 
 agent = Agent(
+    name="Agenteer",
     model=f'{provider}:{model}',
-    toolsets=[server]
+    toolsets=[
+        ch_mcp_server, 
+        # run_python_server, 
+        brave_search_server, 
+        web_scraping_toolset
+        ]
     )
 
 class ChatInteraction():

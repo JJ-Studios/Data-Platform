@@ -36,7 +36,11 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+app = FastAPI(
+    title="Data Engineering Platform",
+    description="Backend API for Agentic Tasks related to data.",
+    version="1.0.0"
+    )
 router = APIRouter()
 
 app.add_middleware(

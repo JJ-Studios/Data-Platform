@@ -9,13 +9,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 api_token = os.getenv("OPENAI_API_KEY")
+model = os.getenv("MODEL")
 
 async def extract_with_llm(url: str, prompt: str):
     browser_config = BrowserConfig(verbose=True, headless=True, text_mode=False)
 
     # llm_config = LLMConfig(provider="ollama/llama3.2:3b")
     # llm_config = LLMConfig(provider="ollama/hf.co/unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:Q4_K_M")
-    llm_config = LLMConfig(provider="openrouter/amazon/nova-2-lite-v1:free", base_url="https://openrouter.ai/api/v1", api_token=api_token)
+    llm_config = LLMConfig(provider=f"openrouter/{model}", base_url="https://openrouter.ai/api/v1", api_token=api_token)
 
 
     run_config = CrawlerRunConfig(

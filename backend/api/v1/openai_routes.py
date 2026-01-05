@@ -156,14 +156,14 @@ async def handle_streaming(user_id: str, prompt: str, model: str, history_contex
                 else:
                     args_display = str(tool_args)
 
-                content_to_yield = f"\n<details><summary>🛠️ Running: {tool_name}</summary>\n\n```json\n{args_display}\n```\n</details>\n"
+                content_to_yield = f"\n<details><summary>🛠️ Running: {tool_name}</summary>\n\n```json\n{args_display}\n```\n</details>\n\n"
             
             elif event["type"] == "tool_result":
-                content_to_yield = f"\n<details><summary>📋 Tool Result</summary>\n\n```json\n{event['content']}\n```\n</details>\n"
+                content_to_yield = f"\n<details><summary>📋 Tool Result</summary>\n\n```json\n{event['content']}\n```\n</details>\n\n"
             
             elif event["type"] == "error":
                 content_to_yield = f"\n\n**Error:** {event['content']}\n\n"
-                           
+
             if content_to_yield:
                 chunk = {
                     "id": run_id,
